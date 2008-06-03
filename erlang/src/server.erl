@@ -10,7 +10,7 @@
 -export([handle_connections/2,
 	 handle_requests/2,
 	 init/1,
-	 loop/1]).
+	 loop/2]).
 
 -define(PORT, 2345).
 
@@ -31,7 +31,7 @@ disconnect(Server, NodePid) ->
     Server ! {'EXIT', NodePid, disconnect}.
 
 broadcast(Server, Msg) ->
-    Server ! {bcast, Msg}.
+    Server ! {bcast, Msg, self()}.
     
 init(Port) ->
     io:format("Starting the server on port ~p~n", [Port]),
@@ -40,27 +40,40 @@ init(Port) ->
 					 {reuseaddr, true},
 					 {active, true}]),
     spawn(?MODULE, handle_connections, [self(), Listen]),
-    loop([]).
+    loop([], 1).
 
-loop(Nodes) ->
+loop(Nodes, NextId) ->
     receive
 	{add, Node} ->
 	    io:format("client connected. #clients = ~B~n", [length(Nodes)+1]),
 	    link(Node),
-	    loop([Node|Nodes]);
+	    %% send client list to the new node
+	    Node ! {send, list_to_binary([<<103:16>>,
+					  lists:map(fun({Id,_})-><<Id:16>>end,Nodes),
+					  <<NextId:16>>])},
+	    Msg = <<101:16,NextId:16>>,
+	    lists:foreach(fun({_,ONode}) -> ONode ! {send, Msg} end, Nodes),
+	    loop([{NextId, Node}|Nodes], NextId+1);
 
-	{bcast, Msg} ->
-	    lists:foreach(fun(Node) -> Node ! {send, Msg} end, Nodes),
-	    loop(Nodes);
+	{bcast, Msg, From} ->
+	    bcast(Msg, Nodes, From), % should we spawn (async) here?
+	    loop(Nodes, NextId);
 
 	{'EXIT', Pid, _} ->
 	    io:format("client exited.    #clients = ~B~n", [length(Nodes)-1]),
-	    loop(lists:delete(Pid, Nodes));
+	    {value, {Id, Pid}} = lists:keysearch(Pid, 2, Nodes), % this could crash
+	    Msg = <<102:16,Id:16>>,
+	    lists:foreach(fun({_,Node}) -> Node ! {send, Msg} end, Nodes),
+	    loop(lists:keydelete(Pid, 2, Nodes), NextId);
 
 	Other ->
 	    io:format("unknown message: ~p~n", [Other]),
-	    loop(Nodes)
+	    loop(Nodes, NextId)
     end.
+
+bcast(_,         [], _) -> ok;
+bcast(M, [{_,F}|Ns], F) -> bcast(M, Ns, F);
+bcast(M, [{_,N}|Ns], F) -> N ! {send, M}, bcast(M, Ns, F).
 
 
 %% Listens for new connections.
@@ -90,5 +103,3 @@ handle_requests(Server, Socket) ->
 	    %%disconnect(Server, self())
 	    exit(socket_closed)
     end.
-
-
