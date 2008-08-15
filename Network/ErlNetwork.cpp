@@ -54,11 +54,12 @@ ErlNetwork::~ErlNetwork() {
     close(this->sock);
 }
 
-void ErlNetwork::Initialize() {
-    
-}
-
-void ErlNetwork::Process(float dt, float p) {
+  void ErlNetwork::Handle(OpenEngine::Core::InitializeEventArg arg) 
+  {
+  }
+  
+  void ErlNetwork::Handle(OpenEngine::Core::ProcessEventArg arg) 
+  {
     timeval tv;
     fd_set fds;
     tv.tv_sec = 0;
@@ -94,16 +95,12 @@ void ErlNetwork::Process(float dt, float p) {
         FD_SET(this->sock, &fds);
         select(this->sock+1, &fds, NULL, NULL, &tv);        
     }
-    
-}
 
-void ErlNetwork::Deinitialize() {
-
-}
-
-bool ErlNetwork::IsTypeOf(const std::type_info& inf) {
-    return false;
-}
+  }
+  
+  void ErlNetwork::Handle(OpenEngine::Core::DeinitializeEventArg arg) 
+  {
+  }
    
 /**
  * Notify over the network.

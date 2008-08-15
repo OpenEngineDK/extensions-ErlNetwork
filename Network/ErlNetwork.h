@@ -48,11 +48,10 @@ public:
     ErlNetwork(string host, unsigned short port);
     virtual ~ErlNetwork();
 
-    virtual void Initialize();
-    virtual void Process(float dt, float p);
-    virtual void Deinitialize();
-    virtual bool IsTypeOf(const std::type_info& inf);
-    
+    void Handle(OpenEngine::Core::InitializeEventArg arg);
+    void Handle(OpenEngine::Core::ProcessEventArg arg);
+    void Handle(OpenEngine::Core::DeinitializeEventArg arg);
+
     /**
      * Notify over the network.
      * This will broadcast the event to all other nodes on the network.
