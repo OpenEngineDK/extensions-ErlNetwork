@@ -122,9 +122,8 @@ void ErlNetwork::Notify(NetworkEventArg arg) {
 }
 
 void ErlNetwork::Write(char* buf, EventLength len) {
-    ssize_t bs;
-    EventLength bt;  // bytes sent and total
-    bs = bt = 0;
+    EventLength bt = 0;         // total amount of bytes sent
+    ssize_t bs;                 // bytes sent on last request
     while (bt < len) {
         if ((bs = send(this->sock, buf, len-bt, 0)) < 0)
             throw NetworkException("Write error: " + string(strerror(errno)));
@@ -134,9 +133,10 @@ void ErlNetwork::Write(char* buf, EventLength len) {
 }
 
 void ErlNetwork::Read(char* buf, EventLength len) {
-    EventLength br, bt;  // bytes received and total
-    br = bt = 0;
-    while (br < len) {
+    EventLength bt = 0;         // total amount of bytes received
+    ssize_t br;                 // bytes received on last request
+    while (bt < len) {
+        // if recv(...) returns 0 the remote side has closed the connection
         if ((br = recv(this->sock, buf, len-bt, 0)) < 1)
             throw NetworkException("Read error: " + string(strerror(errno)));
         bt  += br;       // add to total bytes and
