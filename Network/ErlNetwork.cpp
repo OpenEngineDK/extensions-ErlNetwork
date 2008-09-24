@@ -122,7 +122,8 @@ void ErlNetwork::Notify(NetworkEventArg arg) {
 }
 
 void ErlNetwork::Write(char* buf, EventLength len) {
-    EventLength bs, bt;  // bytes sent and total
+    ssize_t bs;
+    EventLength bt;  // bytes sent and total
     bs = bt = 0;
     while (bt < len) {
         if ((bs = send(this->sock, buf, len-bt, 0)) < 0)
